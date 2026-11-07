@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Timberwolf Addition Lab • TEKS 2.4(B)</title><style>:root{font-family:Arial,sans-serif;color:#15233b;background:#f2f6fb}body{margin:0}header{background:#173c73;color:white;padding:22px}main{max-width:1050px;margin:auto;padding:18px}.card{background:white;border:2px solid #c9d7e8;border-radius:16px;margin:16px 0;padding:20px}h1{margin:0}h2{margin-top:0}.sub{color:#dce7f8}.eq{font-size:30px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pv{border:2px solid #526b89;border-radius:9px;min-height:160px;overflow:hidden;text-align:center}.pv strong{display:block;background:#e9eff7;padding:10px}.chips{min-height:90px;display:flex;flex-wrap:wrap;align-content:start;gap:4px;padding:9px}.chip{border:2px solid #244d85;background:#c9e0ff;border-radius:50%;height:24px;width:24px;cursor:pointer}.chip:hover{background:#fbd77e}.chip.selected{background:#ffcc66;border-color:#c36b00;box-shadow:0 0 0 2px #f7a22e}.regroup{background:#e5f6e8;border:2px solid #2a8c4a}.regroup:disabled{opacity:.45;cursor:not-allowed}.count{font-weight:bold;color:#244d85;padding:4px}.exchange-msg{font-size:13px;color:#17633b;min-height:18px}.chip-label{font-size:12px;color:#536579}.buttons{display:flex;gap:7px;flex-wrap:wrap;padding:9px}.buttons button{padding:7px 10px}button{cursor:pointer;border-radius:8px;border:1px solid #8098b8;background:#eef4fc;padding:10px;font-weight:600}button.primary{background:#1754a2;color:white}.answer{font-size:20px;width:120px;padding:8px}.feedback{font-weight:bold;min-height:24px}.hint{color:#44566c}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.score{font-weight:bold}.teacher{display:none}body.teacher-on .teacher{display:block}.foot{font-size:12px;color:#536579}.chip-note{font-size:13px;color:#425777}@media(max-width:650px){.grid{gap:3px}.pv{min-height:125px}.chips{padding:4px}.chip{width:18px;height:18px}.eq{font-size:23px}}@media print{header,.toolbar,.buttons,.feedback{display:none}.card{break-inside:avoid}}</style></head><body><header><h1>🐺 Timberwolf Addition Lab</h1><div class="sub">TEKS 2.4(B) • Chip models and mental math</div></header><main><div class="card"><div class="toolbar"><label>Student name <input id="student" placeholder="Your name"></label><span id="progress" class="score">0 / 10 correct</span><button onclick="toggleTeacher()">Teacher view</button><button onclick="exportResults()">Download results CSV</button><button onclick="window.print()">Print</button></div><p class="hint">For each question, use the chips to show your thinking. Tap <b>+ Chip</b> to add disks. Tap ones to select ten, then press <b>Trade 10 ones → 1 ten</b>. Type your answer and choose <b>Check answer</b>.</p><p class="chip-note">Chips are a workspace: select 10 matching disks (they turn gold), then trade them for one disk in the next place. The trade buttons also work automatically when you have at least ten. Tap a selected chip again to unselect it. Answers are graded automatically; models are not graded.</p></div><div id="questions"></div><section class="card teacher"><h2>Teacher answer key</h2><div class="toolbar"><button onclick="changeTeacherPin()">🔒 Change Teacher PIN</button><span id="pin-status" aria-live="polite"></span></div><div id="key"></div><p class="foot">Teacher PIN is a basic classroom convenience, not secure protection. Students with access to the HTML source can discover the default PIN or bypass the check. Do not store sensitive student information here. Scores are stored only in this browser session until downloaded; no student submissions are sent to a server.</p></section><p class="foot">Adapted for noncommercial classroom use from SustainED Leaders, K–5 Math Customized Resources © 2025. Original resource used with attribution; interactive chip tools and automatic checking added.</p></main><script>
+const qs=[{text:'45 + 35',answer:80,mode:'mental'},{text:'38 + 49',answer:87,mode:'mental'},{text:'46 → +10 → ___ → +___ → 57',answer:56,extra:1,mode:'path'},{text:'95 → +10 → ___ → +___ → 106',answer:105,extra:1,mode:'path'},{text:'126 + 65',answer:191},{text:'153 + 29',answer:182},{text:'136 + 49',answer:185},{text:'114 + 59',answer:173},{text:'48 + 73 + 52 + 14',answer:187},{text:'29 + 85 + 33 + 11',answer:158}];
+const state=qs.map(()=>({chips:[0,0,0],selected:[[],[],[]],attempts:0,correct:false,value:'',extra:''}));
+const root=document.getElementById('questions');qs.forEach((q,i)=>{const el=document.createElement('section');el.className='card';el.innerHTML=`<h2>Question ${i+1}</h2><p class="eq">${q.text}</p><p>${i<2?'Solve using a mental math strategy.':i<4?'Fill in the number path.':i<8?'Solve and show your work with a place-value chip model.':'Find the sum and model your strategy.'}</p><div class="grid">${['Hundreds','Tens','Ones'].map((c,j)=>`<div class="pv"><strong>${c}</strong><div class="chips" id="chips-${i}-${j}"></div><div class="count" id="count-${i}-${j}">0 ${c.toLowerCase()}</div><div class="buttons"><button onclick="addChip(${i},${j})">+ Chip</button><button onclick="removeChip(${i},${j})">− Chip</button></div></div>`).join('')}</div><div class="toolbar" style="margin-top:12px"><button class="regroup" id="trade-ones-${i}" onclick="trade(${i},2)">🔁 Trade 10 ones → 1 ten</button><button class="regroup" id="trade-tens-${i}" onclick="trade(${i},1)">🔁 Trade 10 tens → 1 hundred</button><span class="exchange-msg" id="trade-msg-${i}" aria-live="polite"></span></div><div class="toolbar" style="margin-top:16px"><label>${q.mode==='path'?'Middle number':'Final answer'} <input class="answer" type="number" id="ans-${i}" inputmode="numeric"></label>${q.mode==='path'?`<label>Last jump <input class="answer" type="number" id="extra-${i}" inputmode="numeric"></label>`:''}<button class="primary" onclick="check(${i})">Check answer</button><button onclick="clearModel(${i})">Clear chips</button></div><p class="feedback" id="feedback-${i}" aria-live="polite"></p>`;root.appendChild(el)});
+function draw(i,j){
+ const s=state[i],el=document.getElementById(`chips-${i}-${j}`);el.innerHTML='';
+ for(let n=0;n<s.chips[j];n++){
+  let b=document.createElement('button');b.className='chip'+(s.selected[j].includes(n)?' selected':'');
+  b.title='Select '+['hundred','ten','one'][j]+' chip '+(n+1);b.setAttribute('aria-label',b.title);
+  b.setAttribute('aria-pressed',String(s.selected[j].includes(n)));
+  b.onclick=()=>toggleChip(i,j,n);el.appendChild(b);
+ }
+ document.getElementById(`count-${i}-${j}`).textContent=s.chips[j]+' '+['hundreds','tens','ones'][j];
+ updateTrade(i);
+}
+function toggleChip(i,j,n){let a=state[i].selected[j],k=a.indexOf(n);if(k>=0)a.splice(k,1);else a.push(n);draw(i,j)}
+function updateTrade(i){
+ for(let j of [1,2]){
+  let b=document.getElementById(`trade-${j===2?'ones':'tens'}-${i}`);
+  if(b)b.disabled=state[i].chips[j]<10;
+ }
+}
+function addChip(i,j){if(state[i].chips[j]<100){state[i].chips[j]++;draw(i,j)}}
+function removeChip(i,j){if(state[i].chips[j]>0){state[i].chips[j]--;state[i].selected[j]=[];draw(i,j)}}
+function trade(i,j){
+ let s=state[i];if(s.chips[j]<10)return;
+ if(s.selected[j].length>0&&s.selected[j].length!==10){document.getElementById(`trade-msg-${i}`).textContent='Select exactly 10 chips, or unselect them to trade automatically.';return}
+ if(s.chips[j-1]>=100){document.getElementById(`trade-msg-${i}`).textContent='Too many chips in the next column.';return}
+ s.chips[j]-=10;s.chips[j-1]++;s.selected[j]=[];
+ draw(i,j);draw(i,j-1);
+ document.getElementById(`trade-msg-${i}`).textContent=j===2?'Great trade! 10 ones = 1 ten.':'Great trade! 10 tens = 1 hundred.';
+}
+function clearModel(i){state[i].chips=[0,0,0];state[i].selected=[[],[],[]];for(let j=0;j<3;j++)draw(i,j);document.getElementById(`trade-msg-${i}`).textContent=''}
+function check(i){let q=qs[i],s=state[i],v=document.getElementById(`ans-${i}`).value;let e=q.mode==='path'?document.getElementById(`extra-${i}`).value:null;if(v===''||(q.mode==='path'&&e==='')){document.getElementById(`feedback-${i}`).textContent='Please fill in your answer first.';return}let good=Number(v)===q.answer&&(q.mode!=='path'||Number(e)===q.extra);s.attempts++;s.value=v;s.extra=e??'';if(good)s.correct=true;document.getElementById(`feedback-${i}`).textContent=good?'✓ Great job! Your answer is correct.':'Not yet. Look at your tens and ones, and try again!';document.getElementById(`feedback-${i}`).style.color=good?'#146b35':'#a34c14';document.getElementById('progress').textContent=state.filter(x=>x.correct).length+' / 10 correct'}
+const DEFAULT_TEACHER_PIN='6510';
+function getTeacherPin(){try{return localStorage.getItem('timberwolf_teacher_pin')||DEFAULT_TEACHER_PIN}catch(e){return DEFAULT_TEACHER_PIN}}
+function toggleTeacher(){
+ if(document.body.classList.contains('teacher-on')){document.body.classList.remove('teacher-on');return}
+ const pin=prompt('Enter teacher PIN:');
+ if(pin===getTeacherPin()){document.body.classList.add('teacher-on')}
+ else if(pin!==null)alert('Incorrect PIN');
+}
+function changeTeacherPin(){
+ if(!document.body.classList.contains('teacher-on'))return;
+ const oldPin=prompt('Enter current teacher PIN:');
+ if(oldPin===null)return;
+ if(oldPin!==getTeacherPin()){alert('Current PIN is incorrect.');return}
+ const newPin=prompt('Choose a new 4-digit teacher PIN:');
+ if(newPin===null)return;
+ if(!/^\d{4}$/.test(newPin)){alert('Please enter exactly four digits.');return}
+ const confirmPin=prompt('Enter the new PIN again to confirm:');
+ if(confirmPin===null)return;
+ if(newPin!==confirmPin){alert('PINs did not match. No changes made.');return}
+ try{localStorage.setItem('timberwolf_teacher_pin',newPin);document.getElementById('pin-status').textContent='PIN changed for this browser.';alert('Teacher PIN updated on this browser.')}catch(e){alert('Your browser blocked saving the PIN. Please allow local storage or use a different browser.')}
+}
+
+qs.forEach((_,i)=>updateTrade(i));
+document.getElementById('key').textContent=qs.map((q,i)=>`${i+1}. ${q.answer}${q.mode==='path'?' (last jump +1)':''}`).join('  •  ');
+function exportResults(){let name=document.getElementById('student').value||'Unnamed';let rows=[['Student','Question','Problem','Student answer','Correct','Attempts','Hundreds chips','Tens chips','Ones chips'],...qs.map((q,i)=>[name,i+1,q.text,state[i].value+(q.mode==='path'?' / '+state[i].extra:''),state[i].correct?'Yes':'No',state[i].attempts,...state[i].chips])];let csv=rows.map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\r\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='timberwolf_math_results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+</script></body></html>
